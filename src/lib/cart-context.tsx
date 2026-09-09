@@ -111,7 +111,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 
     case "APPLY_DISCOUNT": {
       const percent = DISCOUNT_CODES[action.payload]
-      if (percent) return { ...state, discountPercent: percent }
+      if (percent) return { ...state, discountPercent: percent, discountCode: action.payload }
       return state
     }
 

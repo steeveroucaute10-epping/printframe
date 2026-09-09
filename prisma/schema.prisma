@@ -141,7 +141,8 @@ model Address {
   createdAt DateTime @default(now())
 
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders     Order[]
+  shippingOrders Order @relation("ShippingAddress", fields: [id], references: [id])
+  billingOrders  Order  @relation("BillingAddress", fields: [id], references: [id])
 
   @@index([userId])
 }
@@ -250,6 +251,7 @@ model Order {
   shippingAddress  Address?      @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
   billingAddress   Address?      @relation("BillingAddress", fields: [billingAddressId], references: [id])
   tickets          Ticket[]
+  reviews          Review[]
 
   @@index([orderNumber])
   @@index([status, createdAt])
@@ -494,6 +496,7 @@ model BlogPost {
   content         String        @db.Text
   coverImage      String?
   authorId        String?
+  author          User?         @relation(fields: [authorId], references: [id])
   status          PageStatus    @default(DRAFT)
   seoTitle        String?
   seoDescription  String?
@@ -504,6 +507,7 @@ model BlogPost {
 
   @@index([slug, status])
   @@index([publishedAt])
+  @@index([authorId])
 }
 
 // ==================== REVIEWS ====================

@@ -2,7 +2,7 @@
   "name": "printframe",
   "version": "0.1.0",
   "private": true,
-  "description": "Custom cardboard photo frames — print-on-demand e-commerce",
+  "description": "Custom cardboard photo frames \u2014 print-on-demand e-commerce",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -41,9 +41,7 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "typescript": "^5.7.2",
-    "tailwindcss": "^3.4.16",
     "postcss": "^8.4.49",
-    "autoprefixer": "^10.4.20",
     "@testing-library/react": "^16.1.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@playwright/test": "^1.49.1",
@@ -51,6 +49,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
-    "prisma": "^6.5.0"
+    "prisma": "^6.5.0",
+    "@tailwindcss/postcss": "^4.0.0"
   }
 }
