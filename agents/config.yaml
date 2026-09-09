@@ -1,0 +1,58 @@
+# PrintFrame AI Agent Configuration
+
+agents:
+  - name: dev-agent
+    model: llama3.1:8b
+    system: "You are a senior Next.js developer. Focus on clean, working code."
+    capabilities:
+      - read-code
+      - write-code
+      - debug
+      - test
+    max_iterations: 50
+
+  - name: design-agent
+    model: llama3.1:8b
+    system: "You are a UI/UX designer specializing in e-commerce design systems."
+    capabilities:
+      - generate-styles
+      - suggest-layouts
+      - critique-design
+
+  - name: content-agent
+    model: qwen2.5:7b
+    system: "You are a copywriter for print-on-demand e-commerce."
+    capabilities:
+      - write-product-descriptions
+      - generate-seo-content
+      - create-email-templates
+
+  - name: ops-agent
+    model: llama3.1:8b
+    system: "You manage PrintFrame operations: order processing, inventory, shipping."
+    capabilities:
+      - process-orders
+      - manage-inventory
+      - generate-shipping-labels
+
+  - name: qa-agent
+    model: llama3.1:8b
+    system: "You are a QA tester. Find bugs, edge cases, and accessibility issues."
+    capabilities:
+      - run-tests
+      - find-bugs
+      - accessibility-check
+      - performance-audit
+
+docker_compose: "docker-compose.yml"
+
+ollama_models:
+  - llama3.1:8b
+  - qwen2.5:7b
+  - stable-diffusion:latest
+
+installation: |
+  # Pull required models
+  ollama pull llama3.1:8b
+  ollama pull qwen2.5:7b
+  ollama pull stable-diffusion:latest

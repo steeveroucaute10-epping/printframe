@@ -1,0 +1,561 @@
+/**
+ * Prisma Schema for PrintFrame
+ * 
+ * Core entities: Users, Products, Orders, Payments, Photos, 
+ * Shipping, Marketing, Support, Content, Reviews
+ */
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  MANAGER
+  SUPPORT
+  PRINT_TEAM
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  PRINTING
+  QUALITY_CHECK
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  APPLE_PAY
+  GOOGLE_PAY
+  PAYPAL
+  KLANAR
+  SHOP_PAY
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ==================== USERS ====================
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  emailVerified       DateTime?
+  passwordHash        String?
+  name                String?
+  phone               String?
+  role                UserRole  @default(CUSTOMER)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  lastLoginAt         DateTime?
+
+  addresses           Address[]
+  orders              Order[]
+  reviews             Review[]
+  wishlist            WishlistItem[]
+  savedPhotos         SavedPhoto[]
+  newsletterSubs      NewsletterSub[]
+  loyaltyPoints       Int       @default(0)
+  lifetimeOrders      Int       @default(0)
+  lifetimeValue       Float     @default(0)
+  isVIP               Boolean   @default(false)
+
+  accounts            Account[]
+  sessions            Session[]
+  tickets             Ticket[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Account {
+  id                 String    @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?   @db.Text
+  access_token       String?   @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?   @db.Text
+  session_state        String?
+
+  user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ==================== ADDRESSES ====================
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  zip       String
+  country   String   @default("US")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders     Order[]
+
+  @@index([userId])
+}
+
+// ==================== PRODUCTS ====================
+model Product {
+  id               String          @id @default(cuid())
+  name             String
+  slug             String          @unique
+  description      String?         @db.Text
+  basePrice        Float
+  category         String          @default("frames")
+  status           ProductStatus   @default(DRAFT)
+  seoTitle         String?
+  seoDescription   String?
+  seoKeywords      String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  variants         ProductVariant[]
+  images           ProductImage[]
+  orderItems       OrderItem[]
+
+  @@index([slug])
+  @@index([category, status])
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model ProductVariant {
+  id             String        @id @default(cuid())
+  productId      String
+  size           String        // e.g., "4x6", "5x7", "8x10", "11x14", "16x20"
+  color          FrameColor
+  matting        MattingOption
+  price          Float
+  inventoryCount Int           @default(999)
+  isAvailable    Boolean       @default(true)
+
+  product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems     OrderItem[]
+
+  @@unique([productId, size, color, matting])
+}
+
+enum FrameColor {
+  MATTE_BLACK
+  WHITE
+  NATURAL_WOOD
+  GREY
+}
+
+enum MattingOption {
+  NONE
+  WHITE_1_INCH
+  WHITE_2_INCH
+}
+
+model ProductImage {
+  id       String  @id @default(cuid())
+  productId String
+  url      String
+  altText  String?
+  sortOrder Int   @default(0)
+
+  product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, sortOrder])
+}
+
+// ==================== ORDERS ====================
+model Order {
+  id               String        @id @default(cuid())
+  orderNumber      String        @unique // e.g., "PF-20260909-0001"
+  userId           String?
+  status           OrderStatus   @default(PENDING)
+  guestEmail       String?
+  subtotal         Float
+  tax              Float         @default(0)
+  shippingCost     Float         @default(0)
+  discount         Float         @default(0)
+  total            Float
+  shippingMethod   String
+  trackingNumber   String?
+  carrier          String?
+  giftMessage      String?
+  giftRecipient    String?
+  notes            String?       @db.Text
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  items            OrderItem[]
+  photos           OrderPhoto[]
+  payment          Payment?
+  shippingLabel    ShippingLabel?
+  user             User?         @relation(fields: [userId], references: [id])
+  shippingAddress  Address       @relation(fields: [shippingAddressId], references: [id])
+  billingAddress   Address       @relation(fields: [billingAddressId], references: [id])
+
+  @@index([orderNumber])
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+model OrderItem {
+  id                String          @id @default(cuid())
+  orderId           String
+  productVariantId  String
+  quantity          Int             @default(1)
+  unitPrice         Float
+  totalPrice        Float
+  frameConfig       Json?           // { style, matting, glass, etc. }
+  printSpecs        Json?           // { resolution, colorProfile, mediaType }
+
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productVariant    ProductVariant  @relation(fields: [productVariantId], references: [id])
+
+  @@index([orderId])
+}
+
+model OrderPhoto {
+  id             String   @id @default(cuid())
+  orderId        String
+  originalUrl    String
+  processedUrl   String?
+  printReadyUrl  String?
+  status         PhotoStatus @default(UPLOADED)
+  createdAt      DateTime @default(now())
+
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+enum PhotoStatus {
+  UPLOADED
+  PROCESSED
+  PRINT_READY
+  FAILED
+}
+
+// ==================== PAYMENTS ====================
+model Payment {
+  id                String           @id @default(cuid())
+  orderId           String           @unique
+  amount            Float
+  currency          String           @default("USD")
+  method            PaymentMethod
+  status            PaymentStatus    @default(PENDING)
+  stripePaymentId   String?          @unique
+  stripeInvoiceId   String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  order             Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refunds           Refund[]
+}
+
+model Refund {
+  id                String           @id @default(cuid())
+  paymentId         String
+  amount            Float
+  reason            String?
+  status            RefundStatus     @default(PENDING)
+  stripeRefundId    String?
+  createdAt         DateTime         @default(now())
+
+  payment           Payment          @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+}
+
+enum RefundStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// ==================== SHIPPING ====================
+model ShippingLabel {
+  id               String         @id @default(cuid())
+  orderId          String         @unique
+  carrier          String
+  service          String
+  trackingNumber   String
+  labelUrl         String
+  cost             Float
+  status           LabelStatus    @default(CREATED)
+  createdAt        DateTime       @default(now())
+
+  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+enum LabelStatus {
+  CREATED
+  PRINTED
+  SHIPPED
+  DELIVERED
+  RETURNED
+}
+
+// ==================== MARKETING ====================
+model DiscountCode {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  type          DiscountType
+  value         Float
+  usageLimit    Int?
+  timesUsed     Int           @default(0)
+  minimumOrder  Float?
+  expiresAt     DateTime?
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([code])
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+  FREE_SHIPPING
+  BOGO
+}
+
+model NewsletterSub {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  status        SubStatus     @default(CONFIRMED)
+  subscribedAt  DateTime      @default(now())
+  unsubscribedAt DateTime?
+
+  @@index([email])
+  @@index([status])
+}
+
+enum SubStatus {
+  CONFIRMED
+  UNSUBSCRIBED
+  PENDING
+}
+
+model EmailCampaign {
+  id              String         @id @default(cuid())
+  name            String
+  subject         String
+  status          CampaignStatus @default(DRAFT)
+  sentCount       Int            @default(0)
+  openRate        Float?
+  clickRate       Float?
+  targetSegments  Json?
+  createdAt       DateTime       @default(now())
+  sentAt          DateTime?
+
+  @@index([status, createdAt])
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+// ==================== SUPPORT ====================
+model Ticket {
+  id            String        @id @default(cuid())
+  userId        String?
+  orderId       String?
+  subject       String
+  description   String        @db.Text
+  status        TicketStatus  @default(OPEN)
+  priority      TicketPriority @default(MEDIUM)
+  channel       TicketChannel @default(EMAIL)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  resolvedAt    DateTime?
+
+  user          User?         @relation(fields: [userId], references: [id])
+  order         Order?        @relation(fields: [orderId], references: [id])
+  messages      TicketMessage[]
+
+  @@index([status, priority])
+  @@index([userId])
+}
+
+model TicketMessage {
+  id          String       @id @default(cuid())
+  ticketId    String
+  sender      String       // user or agent
+  senderRole  String       // CUSTOMER, ADMIN, BOT
+  message     String       @db.Text
+  isInternal  Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+
+  ticket      Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+}
+
+enum TicketChannel {
+  EMAIL
+  CHAT
+  PHONE
+  SOCIAL
+}
+
+// ==================== CONTENT ====================
+model Page {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  title           String
+  content         String        @db.Text
+  metaTitle       String?
+  metaDescription String?
+  status          PageStatus    @default(DRAFT)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([slug, status])
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model BlogPost {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  title           String
+  excerpt         String?
+  content         String        @db.Text
+  coverImage      String?
+  authorId        String?
+  status          PageStatus    @default(DRAFT)
+  seoTitle        String?
+  seoDescription  String?
+  tags            String[]      @default([])
+  publishedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([slug, status])
+  @@index([publishedAt])
+}
+
+// ==================== REVIEWS ====================
+model Review {
+  id          String       @id @default(cuid())
+  userId      String
+  orderId     String?
+  rating      Int          // 1-5
+  title       String?
+  body        String?      @db.Text
+  status      ReviewStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ==================== WISHLIST ====================
+model WishlistItem {
+  id          String       @id @default(cuid())
+  userId      String
+  variantId   String?
+  createdAt   DateTime     @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+// ==================== SAVED PHOTOS ====================
+model SavedPhoto {
+  id          String       @id @default(cuid())
+  userId      String
+  photoUrl    String
+  fileName    String?
+  createdAt   DateTime     @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// ==================== EVENTS ====================
+model Event {
+  id          String       @id @default(cuid())
+  userId      String?
+  eventType   String
+  eventData   Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime     @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([userId])
+}
