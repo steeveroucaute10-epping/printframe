@@ -56,7 +56,7 @@ const initialState: CartState = {
   discountPercent: 0,
 }
 
-function cartReducer(state: CartState, action: CartAction): CartState {
+export function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case "ADD_ITEM": {
       const { id, productVariantId, size, color, matting, quantity, unitPrice, name } = action.payload
@@ -121,6 +121,34 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     default:
       return state
   }
+}
+
+// ==================== HELPERS ====================
+
+export function addItem(payload: Omit<CartItem, "totalPrice">): CartAction {
+  return { type: "ADD_ITEM", payload }
+}
+
+export function removeItem(id: string): CartAction {
+  return { type: "REMOVE_ITEM", payload: id }
+}
+
+export function updateQuantity(id: string, quantity: number): CartAction {
+  return { type: "UPDATE_QUANTITY", payload: { id, quantity } }
+}
+
+export function clearCart(): CartAction {
+  return { type: "CLEAR_CART" }
+}
+
+export function calculateTotals(state: CartState): { subtotal: number; shipping: number; discount: number; total: number; totalItems: number } {
+  const subtotal = state.items.reduce((sum, item) => sum + item.totalPrice, 0)
+  const shipping = SHIPPING_RATES[state.shippingMethod]?.price ?? 0
+  const discount = subtotal * (state.discountPercent / 100)
+  const totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0)
+  const total = Math.max(0, subtotal - discount + (state.items.length > 0 ? shipping : 0))
+
+  return { subtotal, shipping, discount, total, totalItems }
 }
 
 // ==================== CONTEXT ====================

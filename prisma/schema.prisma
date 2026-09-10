@@ -165,7 +165,6 @@ model Product {
 
   variants         ProductVariant[]
   images           ProductImage[]
-  orderItems       OrderItem[]
 
   @@index([slug])
   @@index([category, status])
