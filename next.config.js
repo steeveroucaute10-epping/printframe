@@ -1,22 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      { protocol: "http", hostname: "localhost", port: "7844", pathname: "/api/v1/**" },
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/health',
-        destination: '/api/health',
-      },
-    ];
-  },
+  output: "standalone",
 };
 
-export default nextConfig;
+module.exports = nextConfig;

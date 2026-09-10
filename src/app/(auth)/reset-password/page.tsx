@@ -1,7 +1,7 @@
-import {" Link "} from "next/link"
-import {" Button "} from "@/components/ui/button"
-import {" Input "} from "@/components/ui/input"
-import {" Label "} from "@/components/ui/label"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export default function ResetPasswordPage() {
   return (
@@ -11,10 +11,11 @@ export default function ResetPasswordPage() {
           <h1 className="text-3xl font-bold text-foreground">Reset password</h1>
           <p className="text-muted-foreground mt-2">Enter your new password below</p>
         </div>
-        <form className="space-y-6" action="/api/auth/reset-password" method="POST">
+        {/* TODO(phase-2): Wire to real password-reset API */}
+        <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); console.log("Reset password stub - no-op") }}>
           <div className="space-y-2">
             <Label htmlFor="password">New Password</Label>
-            <Input id="password" name="password" type="password" minLength=8 required />
+            <Input id="password" name="password" type="password" minLength={8} required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm New Password</Label>

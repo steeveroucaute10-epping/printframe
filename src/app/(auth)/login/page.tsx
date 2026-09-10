@@ -1,9 +1,7 @@
-import {" headers "} from "next/headers"
-import {" redirect "} from "next/navigation"
-import {" Link "} from "next/link"
-import {" Button "} from "@/components/ui/button"
-import {" Input "} from "@/components/ui/input"
-import {" Label "} from "@/components/ui/label"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export default function LoginPage() {
   return (
@@ -13,7 +11,8 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-foreground">Welcome back</h1>
           <p className="text-muted-foreground mt-2">Sign in to your PrintFrame account</p>
         </div>
-        <form className="space-y-6" action="/api/auth/login" method="POST">
+        {/* TODO(phase-2): Wire to real auth (NextAuth or custom API) */}
+        <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); console.log("Login stub - no-op") }}>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" placeholder="you@example.com" required />
@@ -25,7 +24,7 @@ export default function LoginPage() {
           <Button type="submit" className="w-full">Sign in</Button>
         </form>
         <p className="text-center text-sm text-muted-foreground">
-          Don't have an account?  
+          Don't have an account?
           <Link href="/register" className="text-primary underline underline-offset-4 hover:text-primary/80">
             Sign up
           </Link>

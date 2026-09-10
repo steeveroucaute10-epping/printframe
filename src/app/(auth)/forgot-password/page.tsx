@@ -1,7 +1,7 @@
-import {" Link "} from "next/link"
-import {" Button "} from "@/components/ui/button"
-import {" Input "} from "@/components/ui/input"
-import {" Label "} from "@/components/ui/label"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export default function ForgotPasswordPage() {
   return (
@@ -11,7 +11,8 @@ export default function ForgotPasswordPage() {
           <h1 className="text-3xl font-bold text-foreground">Forgot password?</h1>
           <p className="text-muted-foreground mt-2">Enter your email and we'll send a reset link</p>
         </div>
-        <form className="space-y-6" action="/api/auth/forgot-password" method="POST">
+        {/* TODO(phase-2): Wire to real password-reset API */}
+        <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); console.log("Forgot password stub - no-op") }}>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" placeholder="you@example.com" required />

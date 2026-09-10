@@ -86,6 +86,7 @@ model User {
   savedPhotos         SavedPhoto[]
   newsletterSubs      NewsletterSub[]
   tickets             Ticket[]
+  blogPosts           BlogPost[]
 
   lifetimeValue       Int       @default(0) // TODO(phase-2): cents, was Float
   loyaltyPoints       Int       @default(0)
@@ -141,8 +142,8 @@ model Address {
   createdAt DateTime @default(now())
 
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  shippingOrders Order @relation("ShippingAddress", fields: [id], references: [id])
-  billingOrders  Order  @relation("BillingAddress", fields: [id], references: [id])
+  shippingOrders Order[] @relation("ShippingAddress")
+  billingOrders  Order[] @relation("BillingAddress")
 
   @@index([userId])
 }

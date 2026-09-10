@@ -1,7 +1,7 @@
-import {" Link "} from "next/link"
-import {" Button "} from "@/components/ui/button"
-import {" Input "} from "@/components/ui/input"
-import {" Label "} from "@/components/ui/label"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export default function RegisterPage() {
   return (
@@ -11,7 +11,8 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-bold text-foreground">Create an account</h1>
           <p className="text-muted-foreground mt-2">Join PrintFrame and start designing</p>
         </div>
-        <form className="space-y-6" action="/api/auth/register" method="POST">
+        {/* TODO(phase-2): Wire to real auth (NextAuth or custom API) */}
+        <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); console.log("Register stub - no-op") }}>
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <Input id="name" name="name" type="text" placeholder="John Doe" required />
@@ -22,7 +23,7 @@ export default function RegisterPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" minLength=8 required />
+            <Input id="password" name="password" type="password" minLength={8} required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm Password</Label>
@@ -31,7 +32,7 @@ export default function RegisterPage() {
           <Button type="submit" className="w-full">Create account</Button>
         </form>
         <p className="text-center text-sm text-muted-foreground">
-          Already have an account?  
+          Already have an account?
           <Link href="/login" className="text-primary underline underline-offset-4 hover:text-primary/80">
             Sign in
           </Link>
