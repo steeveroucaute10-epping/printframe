@@ -10,7 +10,11 @@ import {
   CheckCircle2,
   Sparkles,
   Heart,
-  Clock
+  Clock,
+  Upload,
+  Layout,
+  Package,
+  Leaf
 } from "lucide-react"
 
 export default function HomePage() {

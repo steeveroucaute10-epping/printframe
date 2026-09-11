@@ -1,47 +1,52 @@
-FROM node:20-alpine AS base
+# PrintFrame Production Dockerfile
+# Optimized for Mac Mini deployment — minimal footprint
+# Target: <800MB image, leaving max RAM for LLMs
 
-# Install dependencies only when needed
-FROM base AS deps
+# =====================
+# Stage 1: Build
+# =====================
+FROM node:20-alpine AS builder
+
 WORKDIR /app
 
-# Install sharp first (native deps)
-RUN apk add --no-cache g++ make python3 && \
-    npm install sharp
+# Install dependencies first (layer caching)
+COPY package.json package-lock.json ./
+RUN npm ci --only=production && \
+    npm install --only=dev && \
+    npx prisma generate
 
-# Install remaining dependencies
-COPY package.json package-lock.json* ./
-RUN npm ci
-
-# Rebuild source only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy source code and build
 COPY . .
-
-ENV NEXT_TELEMETRY_DISABLED=1
-
-RUN npx prisma generate
 RUN npm run build
 
-# Production image
-FROM base AS runner
+# =====================
+# Stage 2: Production Runner
+# =====================
+FROM node:20-alpine AS runner
+
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
+# Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
+# Copy only production artifacts from builder
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 USER nextjs
 
 EXPOSE 3000
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
 CMD ["node", "server.js"]

@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { useCart } from "@/lib/cart-context"
 import {
   Upload,
   ZoomIn,
@@ -16,6 +16,8 @@ import {
   X,
   Plus,
   Minus,
+  ShoppingCart,
+  Truck,
 } from "lucide-react"
 
 // Frame color options
@@ -386,9 +388,27 @@ export function FrameConfigurator() {
 
   const handleAddToCart = () => {
     if (!uploadedImage) return
-    // In production, this would add to the cart context
+    
+    const frameColor = FRAME_COLORS.find(c => c.value === selectedColor) || FRAME_COLORS[0]
+    const newVariantId = `custom-${Date.now()}`
+    
+    dispatch({
+      type: 'ADD_ITEM',
+      payload: {
+        id: newVariantId,
+        variantId: newVariantId,
+        name: `Custom ${selectedSize.label} Frame`,
+        size: selectedSize.label,
+        color: frameColor.name,
+        matting: selectedMatting.label,
+        quantity,
+        unitPrice: selectedSize.price + selectedMatting.price,
+        totalPrice: (selectedSize.price + selectedMatting.price) * quantity,
+        image: uploadedImage,
+      },
+    })
+    
     setInCart(true)
-    // Show success feedback
     setTimeout(() => setInCart(false), 2000)
   }
 
@@ -529,5 +549,3 @@ export function FrameConfigurator() {
     </div>
   )
 }
-
-import { ShoppingCart, Truck } from "lucide-react"
