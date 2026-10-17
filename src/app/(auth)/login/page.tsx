@@ -1,7 +1,7 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   return (
@@ -11,8 +11,12 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-foreground">Welcome back</h1>
           <p className="text-muted-foreground mt-2">Sign in to your PrintFrame account</p>
         </div>
-        {/* TODO(phase-2): Wire to real auth (NextAuth or custom API) */}
-        <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); console.log("Login stub - no-op") }}>
+        <form
+          action="/api/auth/callback/credentials"
+          method="POST"
+          className="space-y-6"
+        >
+          <input type="hidden" name="csrfToken" defaultValue="" />
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" placeholder="you@example.com" required />
@@ -36,5 +40,5 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }

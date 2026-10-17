@@ -1,9 +1,46 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+"use client";
+
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 
 export default function RegisterPage() {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const formData = new FormData(e.target as HTMLFormElement);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error || "Registration failed");
+        setLoading(false);
+        return;
+      }
+
+      // Redirect to login page after successful registration
+      window.location.href = "/login?registered=true";
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8">
@@ -11,8 +48,12 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-bold text-foreground">Create an account</h1>
           <p className="text-muted-foreground mt-2">Join PrintFrame and start designing</p>
         </div>
-        {/* TODO(phase-2): Wire to real auth (NextAuth or custom API) */}
-        <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); console.log("Register stub - no-op") }}>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm" role="alert">
+            {error}
+          </div>
+        )}
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <Input id="name" name="name" type="text" placeholder="John Doe" required />
@@ -29,7 +70,9 @@ export default function RegisterPage() {
             <Label htmlFor="confirmPassword">Confirm Password</Label>
             <Input id="confirmPassword" name="confirmPassword" type="password" required />
           </div>
-          <Button type="submit" className="w-full">Create account</Button>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Creating account..." : "Create account"}
+          </Button>
         </form>
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?
@@ -39,5 +82,5 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }
