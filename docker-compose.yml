@@ -1,143 +1,90 @@
-version: '3.8'
+# PrintFrame Production Deployment — Mac Mini
+# Memory budget: Stack uses ~900MB max, leaving ~47.1GB for LLMs
+# Based on 48GB Mac Mini hardware
 
 services:
-  # ==========================================
-  # DATABASE
-  # ==========================================
-  postgres:
-    image: postgres:16-alpine
+  app:
+    image: printframe/production:latest
+    container_name: printframe-app
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: printframe
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-printframe_dev}
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 1.0
     ports:
-      - '5432:5432'
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/printframe
+      - REDIS_URL=redis://redis:6379
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - NODE_ENV=production
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - printframe-net
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: printframe-db
+    restart: unless-stopped
+    mem_limit: 256m
+    mem_reservation: 128m
+    cpus: 1.0
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=printframe
+      - POSTGRES_MAX_CONNECTIONS=50
+      - SHARED_BUFFERS=64MB
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - printframe-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ==========================================
-  # REDIS
-  # ==========================================
   redis:
     image: redis:7-alpine
+    container_name: printframe-redis
     restart: unless-stopped
-    ports:
-      - '6379:6379'
-    command: redis-server --appendonly yes
+    mem_limit: 128m
+    mem_reservation: 64m
+    cpus: 0.5
     volumes:
-      - redis_data:/data
+      - redis-data:/data
+    command: redis-server --maxmemory 100mb --maxmemory-policy allkeys-lru
+    networks:
+      - printframe-net
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ==========================================
-  # NEXT.JS APP
-  # ==========================================
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - '3000:3000'
-    environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-printframe_dev}@postgres:5432/printframe
-      REDIS_URL: redis://redis:6379
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_...}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_...}
-      RESEND_API_KEY: ${RESEND_API_KEY:-re_...}
-      OLLAMA_BASE_URL: http://ollama:11434
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - app_node_modules:/app/node_modules
-      - .:/app
-      - /app/node_modules
-    command: npm run dev
-
-  # ==========================================
-  # BULL QUEUE WORKER
-  # ==========================================
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-printframe_dev}@postgres:5432/printframe
-      REDIS_URL: redis://redis:6379
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - worker_node_modules:/worker/node_modules
-      - .:/worker
-      - /worker/node_modules
-    command: npm run worker
-
-  # ==========================================
-  # OLLAMA (Local LLM)
-  # ==========================================
-  ollama:
-    image: ollama/ollama:latest
-    restart: unless-stopped
-    ports:
-      - '11434:11434'
-    volumes:
-      - ollama_data:/root/.ollama
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-    # Pre-load models on startup
-    command: >
-      sh -c "
-        ollama serve &
-        sleep 5
-        ollama pull llama3.1:8b
-        ollama pull qwen2.5:7b
-        ollama pull stable-diffusion:1477871b769f
-        wait
-      "
-
-  # ==========================================
-  # BULL BOARD (Queue UI)
-  # ==========================================
-  bull-board:
-    image: node:20-alpine
-    restart: unless-stopped
-    ports:
-      - '3001:3001'
-    environment:
-      REDIS_URL: redis://redis:6379
-    volumes:
-      - bull_board_node_modules:/bull/node_modules
-      - ./agents:/bull/agents
-    command: >
-      sh -c "
-        cd /bull
-        npm init -y
-        npm install express bull bull-board
-        node server.js
-      "
-
 volumes:
-  postgres_data:
-  redis_data:
-  ollama_data:
-  app_node_modules:
-  worker_node_modules:
-  bull_board_node_modules:
+  postgres-data:
+  redis-data:
+
+networks:
+  printframe-net:
+    driver: bridge
