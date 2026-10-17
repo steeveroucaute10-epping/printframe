@@ -15,8 +15,10 @@ export function formatPriceFloat(price: number): string {
 
 export function generateOrderNumber(): string {
   const date = new Date()
-  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '')
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "")
+  const random = Math.floor(Math.random() * 10000)
+    .toString()
+    .padStart(4, "0")
   return `PF-${dateStr}-${random}`
 }
 
@@ -26,10 +28,10 @@ export function getShippingRate(method: string): number {
     express: 12.99,
     rush: 24.99,
   }
-  return rates[method] || 5.99
+  return rates[method] ?? 5.99
 }
 
 export function getImageDimensions(filename: string): { width: number; height: number } {
-  // For now, return default. In production, this would use image metadata.
+  // TODO(phase-2): Use sharp to read image metadata in production
   return { width: 1000, height: 1200 }
 }

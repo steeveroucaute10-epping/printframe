@@ -23,7 +23,6 @@ export default function Footer() {
               <li><Link href="/frames?size=4x6" className="hover:text-white transition-colors">4×6 Frames</Link></li>
               <li><Link href="/frames?size=8x10" className="hover:text-white transition-colors">8×10 Frames</Link></li>
               <li><Link href="/frames?size=16x20" className="hover:text-white transition-colors">Large Frames</Link></li>
-              <li><Link href="/gifts" className="hover:text-white transition-colors">Gift Guide</Link></li>
             </ul>
           </div>
 

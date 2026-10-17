@@ -3,15 +3,10 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner-toaster";
 
-const inter = Inter({
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
-});
-
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  display: "swap",
+  weight: ["400", "500", "600", "700"],
   variable: "--font-display",
 });
 
@@ -21,16 +16,16 @@ export const metadata: Metadata = {
     template: "%s | PrintFrame",
   },
   description:
-    "Turn your precious photos into stunning custom frames. Premium quality, eco-friendly cardboard, delivered to your door in days.",
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-image-preview": "large",
-    },
-  },
+    "Turn your precious photos into stunning custom cardboard frames. Premium quality, eco-friendly, delivered to your door.",
+  keywords: [
+    "photo frames",
+    "custom frames",
+    "cardboard frames",
+    "printed frames",
+    "personalized frames",
+    "gift frames",
+  ],
+  robots: "index, follow",
 };
 
 export default function RootLayout({
@@ -41,10 +36,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${plusJakarta.variable}`}
+      className={`${inter.variable} ${jakarta.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         {children}
         <Toaster />
       </body>

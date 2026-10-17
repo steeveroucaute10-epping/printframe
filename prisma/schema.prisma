@@ -85,14 +85,15 @@ model User {
   wishlist            WishlistItem[]
   savedPhotos         SavedPhoto[]
   newsletterSubs      NewsletterSub[]
+  tickets             Ticket[]
+
+  lifetimeValue       Int       @default(0) // TODO(phase-2): cents, was Float
   loyaltyPoints       Int       @default(0)
   lifetimeOrders      Int       @default(0)
-  lifetimeValue       Float     @default(0)
   isVIP               Boolean   @default(false)
 
   accounts            Account[]
   sessions            Session[]
-  tickets             Ticket[]
 
   @@index([email])
   @@index([role])
@@ -110,7 +111,7 @@ model Account {
   token_type         String?
   scope              String?
   id_token           String?   @db.Text
-  session_state        String?
+  session_state      String?
 
   user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -151,7 +152,7 @@ model Product {
   name             String
   slug             String          @unique
   description      String?         @db.Text
-  basePrice        Float
+  basePrice        Int             // TODO(phase-2): cents, was Float
   category         String          @default("frames")
   status           ProductStatus   @default(DRAFT)
   seoTitle         String?
@@ -180,12 +181,13 @@ model ProductVariant {
   size           String        // e.g., "4x6", "5x7", "8x10", "11x14", "16x20"
   color          FrameColor
   matting        MattingOption
-  price          Float
+  price          Int           // TODO(phase-2): cents, was Float
   inventoryCount Int           @default(999)
   isAvailable    Boolean       @default(true)
 
   product        Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   orderItems     OrderItem[]
+  wishlist       WishlistItem[] // TODO(phase-2): add back-relationship
 
   @@unique([productId, size, color, matting])
 }
@@ -222,11 +224,11 @@ model Order {
   userId           String?
   status           OrderStatus   @default(PENDING)
   guestEmail       String?
-  subtotal         Float
-  tax              Float         @default(0)
-  shippingCost     Float         @default(0)
-  discount         Float         @default(0)
-  total            Float
+  subtotal         Int           // TODO(phase-2): cents, was Float
+  tax              Int           @default(0) // TODO(phase-2): cents
+  shippingCost     Int           @default(0) // TODO(phase-2): cents
+  discount         Int           @default(0) // TODO(phase-2): cents
+  total            Int           // TODO(phase-2): cents, was Float
   shippingMethod   String
   trackingNumber   String?
   carrier          String?
@@ -236,13 +238,18 @@ model Order {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
+  // Scalar foreign keys for Address relations
+  shippingAddressId String?
+  billingAddressId  String?
+
   items            OrderItem[]
   photos           OrderPhoto[]
   payment          Payment?
   shippingLabel    ShippingLabel?
   user             User?         @relation(fields: [userId], references: [id])
-  shippingAddress  Address       @relation(fields: [shippingAddressId], references: [id])
-  billingAddress   Address       @relation(fields: [billingAddressId], references: [id])
+  shippingAddress  Address?      @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
+  billingAddress   Address?      @relation("BillingAddress", fields: [billingAddressId], references: [id])
+  tickets          Ticket[]
 
   @@index([orderNumber])
   @@index([status, createdAt])
@@ -254,8 +261,8 @@ model OrderItem {
   orderId           String
   productVariantId  String
   quantity          Int             @default(1)
-  unitPrice         Float
-  totalPrice        Float
+  unitPrice         Int             // TODO(phase-2): cents, was Float
+  totalPrice        Int             // TODO(phase-2): cents, was Float
   frameConfig       Json?           // { style, matting, glass, etc. }
   printSpecs        Json?           // { resolution, colorProfile, mediaType }
 
@@ -290,7 +297,7 @@ enum PhotoStatus {
 model Payment {
   id                String           @id @default(cuid())
   orderId           String           @unique
-  amount            Float
+  amount            Int              // TODO(phase-2): cents, was Float
   currency          String           @default("USD")
   method            PaymentMethod
   status            PaymentStatus    @default(PENDING)
@@ -306,7 +313,7 @@ model Payment {
 model Refund {
   id                String           @id @default(cuid())
   paymentId         String
-  amount            Float
+  amount            Int              // TODO(phase-2): cents, was Float
   reason            String?
   status            RefundStatus     @default(PENDING)
   stripeRefundId    String?
@@ -331,7 +338,7 @@ model ShippingLabel {
   service          String
   trackingNumber   String
   labelUrl         String
-  cost             Float
+  cost             Int            // TODO(phase-2): cents, was Float
   status           LabelStatus    @default(CREATED)
   createdAt        DateTime       @default(now())
 
@@ -353,10 +360,10 @@ model DiscountCode {
   id            String        @id @default(cuid())
   code          String        @unique
   type          DiscountType
-  value         Float
+  value         Int           // TODO(phase-2): cents, was Float
   usageLimit    Int?
   timesUsed     Int           @default(0)
-  minimumOrder  Float?
+  minimumOrder  Int?          // TODO(phase-2): cents, was Float
   expiresAt     DateTime?
   active        Boolean       @default(true)
   createdAt     DateTime      @default(now())
@@ -373,11 +380,14 @@ enum DiscountType {
 }
 
 model NewsletterSub {
-  id            String        @id @default(cuid())
-  email         String        @unique
-  status        SubStatus     @default(CONFIRMED)
-  subscribedAt  DateTime      @default(now())
+  id             String        @id @default(cuid())
+  userId         String?
+  email          String        @unique
+  status         SubStatus     @default(CONFIRMED)
+  subscribedAt   DateTime      @default(now())
   unsubscribedAt DateTime?
+
+  user           User?         @relation(fields: [userId], references: [id])
 
   @@index([email])
   @@index([status])
@@ -509,6 +519,7 @@ model Review {
   updatedAt   DateTime     @updatedAt
 
   user        User         @relation(fields: [userId], references: [id])
+  order       Order?       @relation(fields: [orderId], references: [id])
 
   @@index([status, createdAt])
   @@index([userId])
