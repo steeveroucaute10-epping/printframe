@@ -1,5 +1,4 @@
 import Link from "next/link"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { 
   Star, 
@@ -7,10 +6,7 @@ import {
   Truck, 
   RefreshCw, 
   ArrowRight, 
-  CheckCircle2,
   Sparkles,
-  Heart,
-  Clock,
   Upload,
   Layout,
   Package,
@@ -250,7 +246,9 @@ export default function HomePage() {
                     <Star key={j} className="h-4 w-4 fill-accent-amber text-accent-amber" />
                   ))}
                 </div>
-                <p className="text-printframe-700 leading-relaxed mb-4">"{review.text}"</p>
+                <p className="text-printframe-700 leading-relaxed mb-4">
+                  &ldquo;{review.text}&rdquo;
+                </p>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-accent-blue/10 flex items-center justify-center">
                     <span className="text-sm font-medium text-accent-blue">{review.name.charAt(0)}</span>

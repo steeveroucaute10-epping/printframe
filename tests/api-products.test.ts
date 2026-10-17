@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GET } from '@/app/api/products/route'
+import { GET, POST } from '@/app/api/products/route'
 import { NextRequest } from 'next/server'
+
+const { mockGetRequestUser } = vi.hoisted(() => ({
+  mockGetRequestUser: vi.fn(),
+}))
 
 // Use factory function to avoid hoisting issues
 vi.mock('@/lib/db', () => ({
@@ -8,8 +12,14 @@ vi.mock('@/lib/db', () => ({
     product: {
       findMany: vi.fn(),
       count: vi.fn(),
+      create: vi.fn(),
     },
   },
+}))
+
+vi.mock('@/lib/auth', () => ({
+  getRequestUser: mockGetRequestUser,
+  isAdmin: (user: { role?: string } | null) => user?.role === 'ADMIN',
 }))
 
 vi.mock('next/cache', () => ({
@@ -23,6 +33,7 @@ const { prisma } = await import('@/lib/db')
 describe('API: Products Routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetRequestUser.mockResolvedValue({ id: 'admin-1', role: 'ADMIN' })
   })
 
   describe('GET /api/products', () => {
@@ -62,6 +73,9 @@ describe('API: Products Routes', () => {
       expect(Array.isArray(body.products)).toBe(true)
       expect(body.products).toHaveLength(2)
       expect(body.total).toBe(2)
+      expect(response.headers.get('cache-control')).toBe(
+        'public, s-maxage=60, stale-while-revalidate=300',
+      )
     })
 
     it('filters by category', async () => {
@@ -105,6 +119,23 @@ describe('API: Products Routes', () => {
       const response = await GET(req)
       const body = await response.json()
       expect(body.products).toEqual([])
+    })
+  })
+
+  describe('POST /api/products', () => {
+    it('rejects non-admin product creation', async () => {
+      mockGetRequestUser.mockResolvedValue({ id: 'customer-1', role: 'CUSTOMER' })
+      const response = await POST(new NextRequest('http://localhost:3000/api/products', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Frame',
+          slug: 'frame',
+          basePrice: 1299,
+        }),
+      }))
+
+      expect(response.status).toBe(403)
+      expect(prisma.product.create).not.toHaveBeenCalled()
     })
   })
 })

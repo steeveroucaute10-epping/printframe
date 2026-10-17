@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ShoppingCart, Menu, X, User } from "lucide-react"
-import { useCart } from "@/lib/cart-context"
+import { useCart } from "@/lib/cart-client"
 
 const NAV_LINKS = [
   { href: "/frames", label: "Frames" },

@@ -4,10 +4,8 @@ import { z } from "zod"
 
 // ==================== VALIDATION SCHEMAS ====================
 
-const uploadSchema = z.object({
-  maxSize: 10 * 1024 * 1024, // 10MB
-  acceptedTypes: ["image/jpeg", "image/png", "image/webp"],
-})
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+const ACCEPTED_UPLOAD_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
 
 const orderSchema = z.object({
   shippingMethod: z.enum(["standard", "express", "rush"]),
@@ -29,7 +27,7 @@ const orderSchema = z.object({
 
 export async function uploadPhoto(file: File, orderId: string) {
   // Validate file
-  if (!uploadSchema.parse(file)) {
+  if (file.size > MAX_UPLOAD_SIZE || !ACCEPTED_UPLOAD_TYPES.has(file.type)) {
     throw new Error("Invalid file type or size")
   }
 
@@ -151,7 +149,6 @@ function getShippingCost(method: string): number {
 
 export async function applyDiscountCode(code: string) {
   const discount = await prisma.discountCode.findUnique({
-    where: { code },
     where: { code, active: true },
   })
 

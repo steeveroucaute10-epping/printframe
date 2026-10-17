@@ -2,14 +2,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { POST } from '@/app/api/payments/stripe/route'
 import { NextRequest } from 'next/server'
 
+const stripeMocks = vi.hoisted(() => ({
+  paymentIntentCreate: vi.fn().mockResolvedValue({
+    id: 'pi_test_123',
+    client_secret: 'pi_test_secret',
+  }),
+  paymentUpdate: vi.fn().mockResolvedValue({ id: 'payment-1' }),
+}))
+
 vi.mock('stripe', () => ({
-  default: vi.fn(() => ({
-    paymentIntents: {
-      create: vi.fn().mockResolvedValue({
-        client_secret: 'pi_test_123',
-      }),
-    },
-  })),
+  default: class MockStripe {
+    paymentIntents = {
+      create: stripeMocks.paymentIntentCreate,
+    }
+  },
 }))
 
 vi.mock('next/cache', () => ({
@@ -19,13 +25,25 @@ vi.mock('next/cache', () => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    productVariant: {
+      findMany: vi.fn().mockResolvedValue([
+        { id: 'clh1234567890abcdefghijk', price: 1299 },
+      ]),
+    },
     order: {
       create: vi.fn().mockResolvedValue({
         id: 'order-1',
         orderNumber: 'PF-12345678',
       }),
     },
+    payment: {
+      update: stripeMocks.paymentUpdate,
+    },
   },
+}))
+
+vi.mock('@/lib/auth', () => ({
+  getRequestUser: vi.fn().mockResolvedValue(null),
 }))
 
 const { prisma } = await import('@/lib/db')
@@ -42,8 +60,9 @@ describe('API: Stripe Payments', () => {
       const req = new NextRequest('http://localhost:3000/api/payments/stripe', {
         method: 'POST',
         body: JSON.stringify({
-          items: [{ price: 100, quantity: 1 }],
-          total: 100,
+          items: [{ variantId: 'clh1234567890abcdefghijk', quantity: 1 }],
+          customerEmail: 'test@example.com',
+          shippingMethod: 'standard',
         }),
       })
       const response = await POST(req)
@@ -59,42 +78,45 @@ describe('API: Stripe Payments', () => {
         body: JSON.stringify({
           items: [
             {
-              price: 1299,
+              variantId: 'clh1234567890abcdefghijk',
               quantity: 1,
-              variant: {
-                product: { name: 'Standard Frame' },
-                size: 'Small',
-                color: 'Black',
-                matting: 'White',
-              },
             },
           ],
-          shipping: 5.99,
-          tax: 0,
-          total: 1304.99,
           customerEmail: 'test@example.com',
-          subtotal: 1299,
-          sessionId: 'session-1',
+          shippingMethod: 'standard',
         }),
       })
 
       const response = await POST(req)
       expect(response.status).toBe(200)
+      expect(stripeMocks.paymentIntentCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 1898,
+          currency: 'usd',
+          metadata: {
+            orderId: 'order-1',
+            orderNumber: 'PF-12345678',
+          },
+        }),
+        { idempotencyKey: 'printframe-order-order-1' },
+      )
+      expect(stripeMocks.paymentUpdate).toHaveBeenCalledWith({
+        where: { orderId: 'order-1' },
+        data: { stripePaymentId: 'pi_test_123' },
+      })
     })
 
-    it('handles empty items gracefully', async () => {
+    it('rejects empty carts', async () => {
       const req = new NextRequest('http://localhost:3000/api/payments/stripe', {
         method: 'POST',
         body: JSON.stringify({
           items: [],
-          shipping: 0,
-          tax: 0,
-          total: 0,
+          customerEmail: 'test@example.com',
         }),
       })
 
       const response = await POST(req)
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(400)
     })
   })
 })

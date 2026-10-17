@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +11,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-foreground">Forgot password?</h1>
-          <p className="text-muted-foreground mt-2">Enter your email and we'll send a reset link</p>
+          <p className="text-muted-foreground mt-2">Enter your email and we&apos;ll send a reset link</p>
         </div>
         {/* TODO(phase-2): Wire to real password-reset API */}
         <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); console.log("Forgot password stub - no-op") }}>

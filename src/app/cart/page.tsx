@@ -3,7 +3,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useCart } from "@/lib/cart-context"
+import { useCart } from "@/lib/cart-client"
 import { Button } from "@/components/ui/button"
 import {
   ShoppingBag,
@@ -59,7 +59,7 @@ export default function CartPage() {
                 <div className="w-32 h-32 bg-printframe-100 rounded-xl relative overflow-hidden shrink-0">
                   <Image
                     src={item.image || "https://images.unsplash.com/photo-1513519245088-0e12902e35ca?w=300&q=80"}
-                    alt={item.name}
+                    alt={item.name || "Custom frame"}
                     fill
                     className="object-cover"
                   />

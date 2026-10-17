@@ -36,7 +36,7 @@ describe('utils/formatPriceFloat', () => {
 describe('utils/generateOrderNumber', () => {
   it('generates order number with PF prefix and date', () => {
     const orderNumber = generateOrderNumber()
-    expect(orderNumber).toMatch(/^PF-\d{8}-\d{4}$/)
+    expect(orderNumber).toMatch(/^PF-\d{8}-[0-9A-F]{8}$/)
   })
 
   it('date portion matches today\'s date', () => {

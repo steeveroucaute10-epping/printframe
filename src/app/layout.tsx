@@ -3,7 +3,6 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import { Toaster } from "@/components/ui/sonner-toaster"
 import { Providers } from "@/lib/providers"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -47,7 +46,6 @@ export default function RootLayout({
           <Header />
           <main>{children}</main>
           <Footer />
-          <Toaster />
         </Providers>
       </body>
     </html>

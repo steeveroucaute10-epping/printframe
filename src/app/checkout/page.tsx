@@ -4,10 +4,13 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useCart } from "@/lib/cart-context"
+import { useCart } from "@/lib/cart-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { StripePaymentForm } from "@/components/stripe-payment-form"
+import { Elements } from "@stripe/react-stripe-js"
+import { loadStripe } from "@stripe/stripe-js"
 import {
   ArrowLeft,
   Truck,
@@ -15,6 +18,9 @@ import {
   CreditCard,
   Loader2,
 } from "lucide-react"
+
+const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+const stripePromise = publishableKey ? loadStripe(publishableKey) : null
 
 interface FormData {
   email: string
@@ -31,8 +37,14 @@ interface FormData {
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, subtotal, shipping, tax, total, clearCart } = useCart()
+  const { items, subtotal, tax, total, clearCart } = useCart()
   const [loading, setLoading] = useState(false)
+  const [checkoutError, setCheckoutError] = useState("")
+  const [payment, setPayment] = useState<{
+    clientSecret: string
+    orderNumber: string
+    amount: number
+  } | null>(null)
   const [formData, setFormData] = useState<FormData>({
     email: "",
     firstName: "",
@@ -53,43 +65,35 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setCheckoutError("")
 
     try {
-      // Create order via API
-      const response = await fetch("/api/orders", {
+      if (!stripePromise) {
+        throw new Error("Stripe checkout is not configured")
+      }
+
+      const response = await fetch("/api/payments/stripe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: items.map((item) => ({
             variantId: item.productVariantId,
             quantity: item.quantity,
-            price: item.unitPrice,
-            size: item.size,
-            color: item.color,
-            matting: item.matting,
           })),
-          subtotal,
-          shipping,
-          tax,
-          total,
-          guestEmail: formData.email,
+          customerEmail: formData.email,
           shippingMethod: "standard",
         }),
       })
 
-      if (!response.ok) throw new Error("Failed to create order")
-
-      const order = await response.json()
-
-      // Clear cart
-      clearCart()
-
-      // Redirect to confirmation
-      router.push(`/order-confirmation?order=${order.orderNumber}`)
+      const result = await response.json()
+      if (!response.ok || !result.clientSecret || !result.orderNumber) {
+        throw new Error(result.error || "Failed to initialize secure payment")
+      }
+      setPayment(result)
     } catch (error) {
-      console.error("Checkout error:", error)
-      // For now, redirect to confirmation anyway (demo mode)
-      router.push("/order-confirmation")
+      setCheckoutError(
+        error instanceof Error ? error.message : "Checkout could not be initialized",
+      )
     } finally {
       setLoading(false)
     }
@@ -266,28 +270,36 @@ export default function CheckoutPage() {
                   </p>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="cardNumber">Card Number</Label>
-                    <Input
-                      id="cardNumber"
-                      placeholder="4242 4242 4242 4242"
-                      className="bg-white"
+                {payment && stripePromise ? (
+                  <Elements
+                    stripe={stripePromise}
+                    options={{ clientSecret: payment.clientSecret }}
+                  >
+                    <StripePaymentForm
+                      amount={payment.amount}
+                      orderNumber={payment.orderNumber}
+                      onComplete={() => {
+                        clearCart()
+                        router.push(
+                          `/order-confirmation?order=${encodeURIComponent(payment.orderNumber)}`,
+                        )
+                      }}
                     />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="expiry">Expiry</Label>
-                      <Input id="expiry" placeholder="MM/YY" className="bg-white" />
-                    </div>
-                    <div>
-                      <Label htmlFor="cvc">CVC</Label>
-                      <Input id="cvc" placeholder="123" className="bg-white" />
-                    </div>
-                  </div>
-                </div>
+                  </Elements>
+                ) : (
+                  <p className="text-sm text-printframe-600">
+                    Enter your shipping information, then continue to Stripe&apos;s secure payment form.
+                  </p>
+                )}
               </div>
 
+              {checkoutError && (
+                <p className="text-sm text-red-600" role="alert">
+                  {checkoutError}
+                </p>
+              )}
+
+              {!payment && (
               <Button
                 type="submit"
                 size="lg"
@@ -302,10 +314,11 @@ export default function CheckoutPage() {
                 ) : (
                   <>
                     <CreditCard className="w-4 h-4" />
-                    Place Order — ${total.toFixed(2)}
+                    Continue to secure payment — ${total.toFixed(2)}
                   </>
                 )}
               </Button>
+              )}
             </form>
           </div>
 
@@ -320,6 +333,8 @@ export default function CheckoutPage() {
               {items.map((item) => (
                 <div key={item.id} className="flex gap-3 text-sm">
                   <div className="w-12 h-12 bg-printframe-100 rounded-lg relative overflow-hidden shrink-0">
+                    {/* Cart previews can be local object/data URLs and are intentionally unoptimized. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={item.image || "/placeholder.svg"}
                       alt={item.name}

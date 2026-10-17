@@ -18,6 +18,8 @@ server.setQueues([
   new BullAdapter(emailQueue),
 ])
 
-app.listen(3001, () => {
-  console.log('Bull Board running at http://localhost:3001')
+// Keep the operational dashboard off external interfaces. If remote access is
+// needed, expose it through an authenticated reverse proxy instead.
+app.listen(3001, '127.0.0.1', () => {
+  console.log('Bull Board running at http://127.0.0.1:3001')
 })

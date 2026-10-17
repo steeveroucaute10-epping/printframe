@@ -1,6 +1,6 @@
 # PrintFrame — Custom Cardboard Photo Frames
 
-Print-on-demand e-commerce platform for custom cardboard photo frames with real-time preview engine, built with Next.js 14 and AI agent support for a Mac Mini.
+Print-on-demand e-commerce platform for custom cardboard photo frames with real-time preview engine, built with Next.js 15 and AI agent support for a Mac Mini.
 
 ## Features
 
@@ -35,7 +35,7 @@ Print-on-demand e-commerce platform for custom cardboard photo frames with real-
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS + shadcn/ui
 - **Database**: PostgreSQL + Prisma ORM

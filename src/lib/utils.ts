@@ -16,9 +16,7 @@ export function formatPriceFloat(price: number): string {
 export function generateOrderNumber(): string {
   const date = new Date()
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "")
-  const random = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, "0")
+  const random = crypto.randomUUID().slice(0, 8).toUpperCase()
   return `PF-${dateStr}-${random}`
 }
 
@@ -33,5 +31,6 @@ export function getShippingRate(method: string): number {
 
 export function getImageDimensions(filename: string): { width: number; height: number } {
   // TODO(phase-2): Use sharp to read image metadata in production
+  void filename
   return { width: 1000, height: 1200 }
 }

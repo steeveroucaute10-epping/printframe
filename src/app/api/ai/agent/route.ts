@@ -1,5 +1,44 @@
 // src/app/api/ai/agent/route.ts
 import { NextResponse } from 'next/server'
+import { getRequestUser, isAdmin } from '@/lib/auth'
+import { z } from 'zod'
+import { readJsonBody, RequestBodyError } from '@/lib/request-json'
+import { checkRateLimit } from '@/lib/rate-limit'
+
+const taskSchema = z.discriminatedUnion('task', [
+  z.object({
+    task: z.literal('photo_enhance'),
+    params: z.object({
+      image: z.string().max(2048),
+      style: z.string().max(100).optional(),
+    }).strict(),
+  }),
+  z.object({
+    task: z.literal('recommend'),
+    params: z.object({
+      userId: z.string().max(100).optional(),
+      purchaseHistory: z.array(z.unknown()).max(100).optional(),
+    }).strict(),
+  }),
+  z.object({
+    task: z.literal('chat'),
+    params: z.object({
+      message: z.string().min(1).max(4000),
+      conversationHistory: z.array(z.unknown()).max(50).optional(),
+    }).strict(),
+  }),
+  z.object({
+    task: z.literal('generate_content'),
+    params: z.object({
+      type: z.string().min(1).max(100),
+      context: z.record(z.string(), z.unknown()).optional(),
+    }).strict(),
+  }),
+  z.object({
+    task: z.literal('predict_status'),
+    params: z.object({ orderId: z.string().min(1).max(100) }).strict(),
+  }),
+])
 
 /**
  * AI Agent execution endpoint
@@ -14,28 +53,47 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { task, params } = body
-
-    // Task types: photo_enhance, recommend, chat, generate_content, predict_status
-    const taskHandlers: Record<string, () => Promise<NextResponse>> = {
-      photo_enhance: () => handlePhotoEnhance(params),
-      recommend: () => handleRecommendations(params),
-      chat: () => handleChat(params),
-      generate_content: () => handleContentGeneration(params),
-      predict_status: () => handleStatusPrediction(params),
+    const user = await getRequestUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
-
-    const handler = taskHandlers[task]
-    if (!handler) {
+    const rateLimit = checkRateLimit(`ai:${user.id}`, 30, 60 * 1000)
+    if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: `Unknown task type: ${task}` },
-        { status: 400 }
+        { error: 'Too many AI requests' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) },
+        },
       )
     }
 
-    return await handler()
+    const parsed = taskSchema.safeParse(await readJsonBody(request))
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid AI request' }, { status: 400 })
+    }
+    const { task, params } = parsed.data
+
+    if (task === 'generate_content' && !isAdmin(user)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    switch (task) {
+      case 'photo_enhance':
+        return handlePhotoEnhance(params)
+      case 'recommend':
+        return handleRecommendations()
+      case 'chat':
+        return handleChat(params)
+      case 'generate_content':
+        return handleContentGeneration(params)
+      case 'predict_status':
+        return handleStatusPrediction()
+    }
   } catch (error) {
+    if (error instanceof RequestBodyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     console.error('AI agent error:', error)
     return NextResponse.json(
       { error: 'AI processing failed' },
@@ -44,8 +102,8 @@ export async function POST(request: Request) {
   }
 }
 
-async function handlePhotoEnhance(params: any) {
-  const { image, style } = params
+async function handlePhotoEnhance(params: { image: string; style?: string }) {
+  const { style } = params
   // Placeholder for actual AI enhancement
   return NextResponse.json({
     suggestions: [
@@ -58,8 +116,7 @@ async function handlePhotoEnhance(params: any) {
   })
 }
 
-async function handleRecommendations(params: any) {
-  const { userId, purchaseHistory } = params
+async function handleRecommendations() {
   // Placeholder - would query product catalog
   return NextResponse.json({
     recommendations: [
@@ -70,8 +127,8 @@ async function handleRecommendations(params: any) {
   })
 }
 
-async function handleChat(params: any) {
-  const { message, conversationHistory } = params
+async function handleChat(params: { message: string; conversationHistory?: unknown[] }) {
+  const { message } = params
   // Placeholder for chatbot
   return NextResponse.json({
     response: generateChatResponse(message),
@@ -80,7 +137,10 @@ async function handleChat(params: any) {
   })
 }
 
-async function handleContentGeneration(params: any) {
+async function handleContentGeneration(params: {
+  type: string
+  context?: Record<string, unknown>
+}) {
   const { type, context } = params
   // Placeholder for content generation
   return NextResponse.json({
@@ -90,8 +150,7 @@ async function handleContentGeneration(params: any) {
   })
 }
 
-async function handleStatusPrediction(params: any) {
-  const { orderId } = params
+async function handleStatusPrediction() {
   // Placeholder for status prediction
   return NextResponse.json({
     predictedStatus: 'SHIPPED',
@@ -108,9 +167,11 @@ function generateChatResponse(message: string): string {
   return 'How can I help you today? I can assist with orders, returns, shipping, or product recommendations.'
 }
 
-function generateContent(type: string, context: any): string {
+function generateContent(type: string, context?: Record<string, unknown>): string {
   if (type === 'product_description') {
-    return `Premium ${context?.material || 'cardboard'} frame, precision-sized for your ${context?.size || 'photo'}. Eco-friendly construction with archival quality.`
+    const material = typeof context?.material === 'string' ? context.material : 'cardboard'
+    const size = typeof context?.size === 'string' ? context.size : 'photo'
+    return `Premium ${material} frame, precision-sized for your ${size}. Eco-friendly construction with archival quality.`
   }
   return 'Content generated successfully'
 }

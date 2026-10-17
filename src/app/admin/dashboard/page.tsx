@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { formatUsd } from "@/lib/commerce"
 import {
   Package,
   Users,
@@ -11,7 +12,6 @@ import {
   Eye,
   Settings,
   Edit,
-  Trash2,
 } from "lucide-react"
 
 export default async function AdminDashboard() {
@@ -35,6 +35,11 @@ export default async function AdminDashboard() {
       },
     }),
     prisma.order.aggregate({
+      where: {
+        status: {
+          in: ['CONFIRMED', 'PROCESSING', 'PRINTING', 'QUALITY_CHECK', 'SHIPPED', 'DELIVERED'],
+        },
+      },
       _sum: {
         total: true,
       },
@@ -44,8 +49,15 @@ export default async function AdminDashboard() {
       orderBy: {
         createdAt: 'desc',
       },
-      include: {
-        items: true,
+      select: {
+        id: true,
+        orderNumber: true,
+        total: true,
+        status: true,
+        createdAt: true,
+        _count: { select: { items: true } },
+        payment: { select: { status: true } },
+        shippingAddress: { select: { city: true } },
       },
     }),
   ])
@@ -80,7 +92,7 @@ export default async function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${(totalRevenue._sum.total || 0).toFixed(2)}
+                {formatUsd(totalRevenue._sum.total || 0)}
               </div>
               <p className="text-xs text-muted-foreground">
                 All time revenue
@@ -149,15 +161,20 @@ export default async function AdminDashboard() {
                     <div>
                       <p className="font-medium">Order #{order.orderNumber}</p>
                       <p className="text-sm text-muted-foreground">
-                        {order.items.length} item{order.items.length !== 1 ? 's' : ''} •{' '}
+                        {order._count.items} item{order._count.items !== 1 ? 's' : ''} •{' '}
                         {order.shippingAddress?.city || 'No address'}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(order.createdAt).toLocaleDateString()}
                       </p>
+                      <p className="text-xs font-medium">
+                        {order.payment?.status === 'COMPLETED'
+                          ? 'Paid'
+                          : 'Awaiting verified payment'}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold">${order.total.toFixed(2)}</p>
+                      <p className="font-bold">{formatUsd(order.total)}</p>
                       <p className="text-sm text-muted-foreground capitalize">
                         {order.status.toLowerCase()}
                       </p>

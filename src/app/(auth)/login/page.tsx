@@ -1,9 +1,41 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+
+    const form = new FormData(event.currentTarget);
+    const result = await signIn("credentials", {
+      email: String(form.get("email") || ""),
+      password: String(form.get("password") || ""),
+      redirect: false,
+      callbackUrl: "/account",
+    });
+
+    if (!result?.ok) {
+      setError("Invalid email or password");
+      setSubmitting(false);
+      return;
+    }
+
+    router.replace("/account");
+    router.refresh();
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8">
@@ -12,11 +44,9 @@ export default function LoginPage() {
           <p className="text-muted-foreground mt-2">Sign in to your PrintFrame account</p>
         </div>
         <form
-          action="/api/auth/callback/credentials"
-          method="POST"
+          onSubmit={handleSubmit}
           className="space-y-6"
         >
-          <input type="hidden" name="csrfToken" defaultValue="" />
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" placeholder="you@example.com" required />
@@ -25,10 +55,13 @@ export default function LoginPage() {
             <Label htmlFor="password">Password</Label>
             <Input id="password" name="password" type="password" required />
           </div>
-          <Button type="submit" className="w-full">Sign in</Button>
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting ? "Signing in..." : "Sign in"}
+          </Button>
+          {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
         </form>
         <p className="text-center text-sm text-muted-foreground">
-          Don't have an account?
+          Don&apos;t have an account?
           <Link href="/register" className="text-primary underline underline-offset-4 hover:text-primary/80">
             Sign up
           </Link>

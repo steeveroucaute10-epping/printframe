@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { useCart } from "@/lib/cart-context"
+import { useCart } from "@/lib/cart-client"
+import { cn } from "@/lib/utils"
 import {
   Upload,
-  ZoomIn,
-  ZoomOut,
   RotateCw,
   Scissors,
   Image as ImageIcon,
@@ -41,6 +40,10 @@ const MATTING_OPTIONS = [
   { label: 'White Mat (1")', value: 'white_1', price: 5 },
   { label: 'White Mat (2")', value: 'white_2', price: 10 },
 ] as const
+
+type FrameSizeOption = (typeof FRAME_SIZES)[number]
+type FrameColorOption = (typeof FRAME_COLORS)[number]
+type MattingOption = (typeof MATTING_OPTIONS)[number]
 
 // ==================== COMPONENTS ====================
 
@@ -109,9 +112,9 @@ function FramePreview({
   matting,
 }: {
   image: string | null
-  size: typeof FRAME_SIZES[0]
-  color: typeof FRAME_COLORS[0]
-  matting: typeof MATTING_OPTIONS[0]
+  size: FrameSizeOption
+  color: FrameColorOption
+  matting: MattingOption
 }) {
   // Calculate matting dimensions
   const matPadding = matting.value === 'white_1' ? 16 : matting.value === 'white_2' ? 32 : 0
@@ -163,8 +166,8 @@ function FramePreview({
 }
 
 function ColorSelector({ selected, onSelect }: {
-  selected: string
-  onSelect: (value: string) => void
+  selected: FrameColorOption["value"]
+  onSelect: (value: FrameColorOption["value"]) => void
 }) {
   return (
     <div className="space-y-3">
@@ -191,8 +194,8 @@ function ColorSelector({ selected, onSelect }: {
 }
 
 function SizeSelector({ selected, onSelect }: {
-  selected: typeof FRAME_SIZES[0]
-  onSelect: (size: typeof FRAME_SIZES[0]) => void
+  selected: FrameSizeOption
+  onSelect: (size: FrameSizeOption) => void
 }) {
   return (
     <div className="space-y-3">
@@ -219,8 +222,8 @@ function SizeSelector({ selected, onSelect }: {
 }
 
 function MattingSelector({ selected, onSelect }: {
-  selected: typeof MATTING_OPTIONS[0]
-  onSelect: (option: typeof MATTING_OPTIONS[0]) => void
+  selected: MattingOption
+  onSelect: (option: MattingOption) => void
 }) {
   return (
     <div className="space-y-3">
@@ -363,11 +366,11 @@ function ImageEditor({ image, onUpdate }: {
 // ==================== MAIN COMPONENT ====================
 
 export function FrameConfigurator() {
+  const { dispatch } = useCart()
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
-  const [file, setFile] = useState<File | null>(null)
-  const [selectedSize, setSelectedSize] = useState(FRAME_SIZES[2]) // 8x10
-  const [selectedColor, setSelectedColor] = useState(FRAME_COLORS[0].value)
-  const [selectedMatting, setSelectedMatting] = useState(MATTING_OPTIONS[0])
+  const [selectedSize, setSelectedSize] = useState<FrameSizeOption>(FRAME_SIZES[2]) // 8x10
+  const [selectedColor, setSelectedColor] = useState<FrameColorOption["value"]>(FRAME_COLORS[0].value)
+  const [selectedMatting, setSelectedMatting] = useState<MattingOption>(MATTING_OPTIONS[0])
   const [quantity, setQuantity] = useState(1)
   const [showEditor, setShowEditor] = useState(false)
   const [inCart, setInCart] = useState(false)
@@ -377,7 +380,6 @@ export function FrameConfigurator() {
 
   const handleFileUpload = (uploadFile: File | null) => {
     if (!uploadFile) return
-    setFile(uploadFile)
     const reader = new FileReader()
     reader.onload = (e) => {
       setUploadedImage(e.target?.result as string)
@@ -396,14 +398,13 @@ export function FrameConfigurator() {
       type: 'ADD_ITEM',
       payload: {
         id: newVariantId,
-        variantId: newVariantId,
+        productVariantId: newVariantId,
         name: `Custom ${selectedSize.label} Frame`,
         size: selectedSize.label,
         color: frameColor.name,
         matting: selectedMatting.label,
         quantity,
         unitPrice: selectedSize.price + selectedMatting.price,
-        totalPrice: (selectedSize.price + selectedMatting.price) * quantity,
         image: uploadedImage,
       },
     })
@@ -430,7 +431,7 @@ export function FrameConfigurator() {
                     <Sparkles className="h-4 w-4 mr-2" />
                     {showEditor ? "Hide Editor" : "Enhance Photo"}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => { setUploadedImage(null); setFile(null); }}>
+                  <Button variant="ghost" size="sm" onClick={() => setUploadedImage(null)}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>

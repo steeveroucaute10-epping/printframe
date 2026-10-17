@@ -1,22 +1,16 @@
 // src/app/order-confirmation/page.tsx
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import {
   CheckCircle2,
   Package,
-  Truck,
   ArrowRight,
   Mail,
   Phone,
 } from "lucide-react"
 
-export default function OrderConfirmationPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ order?: string; email?: string }>
-}) {
+export default function OrderConfirmationPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-printframe-50 to-white py-16">
       <div className="max-w-3xl mx-auto px-4">

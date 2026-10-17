@@ -3,14 +3,11 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
-import { useCart } from "@/lib/cart-context"
+import { useCart } from "@/lib/cart-client"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { Upload, X, ZoomIn, ZoomOut, Move, Heart, ChevronRight, ChevronLeft, Check } from "lucide-react"
+import { Upload, X, ZoomIn, ZoomOut, Heart, ChevronRight, ChevronLeft, Check } from "lucide-react"
 
 interface FrameSize {
   id: string
@@ -31,8 +28,8 @@ interface FrameMatting {
   width: string
 }
 
-export function FrameConfigurator() {
-  const { state, dispatch, total } = useCart()
+export default function FrameConfigurator() {
+  const { dispatch } = useCart()
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [zoom, setZoom] = useState(1)
@@ -98,7 +95,7 @@ export function FrameConfigurator() {
   const removeImage = () => {
     setUploadedImage(null)
     setPhotoFile(null)
-    toast.info("Image removed")
+    toast("Image removed")
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -140,8 +137,8 @@ export function FrameConfigurator() {
         matting: selectedMatting?.id || "none",
         quantity: 1,
         unitPrice: totalPrice,
-        totalPrice: totalPrice,
         name: `Custom Frame ${selectedSize.name} - ${selectedColor.name}`,
+        image: uploadedImage || undefined,
       },
     })
 
@@ -207,6 +204,8 @@ export function FrameConfigurator() {
                   className="relative w-full h-full cursor-grab active:cursor-grabbing"
                   onMouseDown={handleMouseDown}
                 >
+                  {/* Uploaded previews are local data URLs and are intentionally unoptimized. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={uploadedImage}
                     alt="Uploaded photo"

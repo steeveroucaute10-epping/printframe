@@ -9,10 +9,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
 # Install dependencies first (layer caching)
 COPY package.json package-lock.json ./
-RUN npm ci --only=production && \
-    npm install --only=dev && \
+RUN npm ci && \
     npx prisma generate
 
 # Copy source code and build

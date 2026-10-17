@@ -3,24 +3,42 @@ import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Package, Search, Eye, Edit } from "lucide-react"
+import Link from "next/link"
+import { formatUsd } from "@/lib/commerce"
 
-export default async function AdminOrders() {
-  const orders = await prisma.order.findMany({
-    include: {
-      items: true,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  })
+const PAGE_SIZE = 50
 
-  const statusCounts = {
-    pending: orders.filter(o => o.status === 'pending').length,
-    processing: orders.filter(o => o.status === 'processing').length,
-    shipped: orders.filter(o => o.status === 'shipped').length,
-    delivered: orders.filter(o => o.status === 'delivered').length,
-    cancelled: orders.filter(o => o.status === 'cancelled').length,
-  }
+export default async function AdminOrders({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const requestedPage = Number.parseInt((await searchParams).page || '1', 10)
+  const page = Number.isFinite(requestedPage) ? Math.max(requestedPage, 1) : 1
+  const [orders, totalOrders, groupedStatuses] = await Promise.all([
+    prisma.order.findMany({
+      select: {
+        id: true,
+        orderNumber: true,
+        total: true,
+        status: true,
+        createdAt: true,
+        _count: { select: { items: true } },
+        payment: { select: { status: true } },
+        shippingAddress: { select: { city: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.order.count(),
+    prisma.order.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    }),
+  ])
+  const counts = new Map(groupedStatuses.map(({ status, _count }) => [status, _count._all]))
+  const totalPages = Math.max(1, Math.ceil(totalOrders / PAGE_SIZE))
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -53,31 +71,31 @@ export default async function AdminOrders() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Pending</p>
-              <p className="text-2xl font-bold">{statusCounts.pending}</p>
+              <p className="text-2xl font-bold">{counts.get('PENDING') || 0}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Processing</p>
-              <p className="text-2xl font-bold">{statusCounts.processing}</p>
+              <p className="text-2xl font-bold">{counts.get('PROCESSING') || 0}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Shipped</p>
-              <p className="text-2xl font-bold">{statusCounts.shipped}</p>
+              <p className="text-2xl font-bold">{counts.get('SHIPPED') || 0}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Delivered</p>
-              <p className="text-2xl font-bold">{statusCounts.delivered}</p>
+              <p className="text-2xl font-bold">{counts.get('DELIVERED') || 0}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Cancelled</p>
-              <p className="text-2xl font-bold">{statusCounts.cancelled}</p>
+              <p className="text-2xl font-bold">{counts.get('CANCELLED') || 0}</p>
             </CardContent>
           </Card>
         </div>
@@ -85,7 +103,7 @@ export default async function AdminOrders() {
         {/* Orders Table */}
         <Card>
           <CardHeader>
-            <CardTitle>All Orders ({orders.length})</CardTitle>
+            <CardTitle>All Orders ({totalOrders})</CardTitle>
           </CardHeader>
           <CardContent>
             {orders.length === 0 ? (
@@ -106,21 +124,26 @@ export default async function AdminOrders() {
                     <div>
                       <p className="font-medium">Order #{order.orderNumber}</p>
                       <p className="text-sm text-muted-foreground">
-                        {order.items.length} item{order.items.length !== 1 ? 's' : ''} •{' '}
+                        {order._count.items} item{order._count.items !== 1 ? 's' : ''} •{' '}
                         {order.shippingAddress?.city || 'No address'}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(order.createdAt).toLocaleDateString()} at{' '}
                         {new Date(order.createdAt).toLocaleTimeString()}
                       </p>
+                      <p className="text-xs font-medium">
+                        {order.payment?.status === 'COMPLETED'
+                          ? 'Paid'
+                          : 'Do not fulfill — payment unverified'}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold">${order.total.toFixed(2)}</p>
+                      <p className="font-bold">{formatUsd(order.total)}</p>
                       <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                        order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                        order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                        order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                        order.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                        order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                        order.status === 'SHIPPED' ? 'bg-blue-100 text-blue-800' :
+                        order.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                        order.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
@@ -138,6 +161,27 @@ export default async function AdminOrders() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between">
+                {page > 1 ? (
+                  <Button asChild variant="outline">
+                    <Link href={`/admin/orders?page=${page - 1}`}>Previous</Link>
+                  </Button>
+                ) : (
+                  <Button variant="outline" disabled>Previous</Button>
+                )}
+                <span className="text-sm text-muted-foreground">
+                  Page {Math.min(page, totalPages)} of {totalPages}
+                </span>
+                {page < totalPages ? (
+                  <Button asChild variant="outline">
+                    <Link href={`/admin/orders?page=${page + 1}`}>Next</Link>
+                  </Button>
+                ) : (
+                  <Button variant="outline" disabled>Next</Button>
+                )}
               </div>
             )}
           </CardContent>

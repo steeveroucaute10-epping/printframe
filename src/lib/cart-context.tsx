@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useReducer, type Dispatch, type ReactNode } from "react"
+import { createContext, useContext, useMemo, useReducer, type Dispatch, type ReactNode } from "react"
 
 // ==================== TYPES ====================
 
@@ -14,6 +14,7 @@ export interface CartItem {
   unitPrice: number
   totalPrice: number
   name?: string
+  image?: string
 }
 
 export interface CartState {
@@ -156,26 +157,41 @@ export function calculateTotals(state: CartState): { subtotal: number; shipping:
 interface CartContextType {
   state: CartState
   dispatch: Dispatch<CartAction>
+  items: CartItem[]
   subtotal: number
   shipping: number
   discount: number
+  tax: number
   total: number
   itemCount: number
+  updateQuantity: (id: string, quantity: number) => void
+  removeItem: (id: string) => void
+  clearCart: () => void
 }
 
 const CartContext = createContext<CartContextType | null>(null)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, initialState)
-
-  const subtotal = state.items.reduce((sum, item) => sum + item.totalPrice, 0)
-  const shipping = SHIPPING_RATES[state.shippingMethod].price
-  const discount = subtotal * (state.discountPercent / 100)
-  const total = Math.max(0, subtotal - discount + (state.items.length > 0 ? shipping : 0))
-  const itemCount = state.items.reduce((sum, item) => sum + item.quantity, 0)
+  const totals = calculateTotals(state)
+  const value = useMemo<CartContextType>(() => ({
+    state,
+    dispatch,
+    items: state.items,
+    subtotal: totals.subtotal,
+    shipping: totals.shipping,
+    discount: totals.discount,
+    tax: 0,
+    total: totals.total,
+    itemCount: totals.totalItems,
+    updateQuantity: (id, quantity) =>
+      dispatch({ type: "UPDATE_QUANTITY", payload: { id, quantity } }),
+    removeItem: (id) => dispatch({ type: "REMOVE_ITEM", payload: id }),
+    clearCart: () => dispatch({ type: "CLEAR_CART" }),
+  }), [state, totals.discount, totals.shipping, totals.subtotal, totals.total, totals.totalItems])
 
   return (
-    <CartContext.Provider value={{ state, dispatch, subtotal, shipping, discount, total, itemCount }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   )

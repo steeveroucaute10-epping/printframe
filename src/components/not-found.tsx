@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation"
+import Link from "next/link"
 
 export default function NotFound() {
   return (
@@ -8,9 +8,9 @@ export default function NotFound() {
       <p className="mt-2 text-printframe-500">
         The page you&apos;re looking for doesn&apos;t exist or has been moved.
       </p>
-      <a href="/" className="mt-6 inline-flex items-center text-sm font-medium text-accent-blue hover:underline">
+      <Link href="/" className="mt-6 inline-flex items-center text-sm font-medium text-accent-blue hover:underline">
         Go back home
-      </a>
+      </Link>
     </div>
   )
 }

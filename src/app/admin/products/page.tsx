@@ -2,13 +2,25 @@
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import { Edit, Plus, Package, Trash2 } from "lucide-react"
 
 export default async function AdminProducts() {
   const products = await prisma.product.findMany({
-    include: {
-      variants: true,
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      _count: { select: { variants: true } },
+      variants: {
+        select: { price: true },
+        orderBy: { price: 'asc' },
+        take: 1,
+      },
+      images: {
+        select: { url: true },
+        orderBy: { sortOrder: 'asc' },
+        take: 1,
+      },
     },
     orderBy: {
       createdAt: 'desc',
@@ -54,8 +66,10 @@ export default async function AdminProducts() {
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-gray-200 rounded-lg">
+                        {/* Product URLs are runtime data; the allowed image hosts are not known at build time. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={product.images?.[0] || '/placeholder.svg'}
+                          src={product.images[0]?.url || '/placeholder.svg'}
                           alt={product.name}
                           className="w-full h-full object-cover rounded-lg"
                         />
@@ -66,7 +80,7 @@ export default async function AdminProducts() {
                           {product.description?.substring(0, 100)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {product.variants.length} variant{product.variants.length !== 1 ? 's' : ''} •{' '}
+                          {product._count.variants} variant{product._count.variants !== 1 ? 's' : ''} •{' '}
                           ${product.variants[0]?.price ? (product.variants[0].price / 100).toFixed(2) : 'N/A'}{' '}
                           starting price
                         </p>
