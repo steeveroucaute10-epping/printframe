@@ -288,6 +288,3 @@ export default function HomePage() {
     </div>
   )
 }
-
-// Icons imported from lucide-react at the top
-import { Upload, Layout, Package, Leaf } from "lucide-react"
