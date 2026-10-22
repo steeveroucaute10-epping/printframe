@@ -14,10 +14,13 @@ ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
 # Install dependencies first (layer caching)
 COPY package.json package-lock.json ./
-RUN npm ci && \
-    npx prisma generate
+RUN npm ci
 
-# Copy source code and build
+# Copy Prisma schema before generating client (schema must exist before npx prisma generate)
+COPY prisma/ ./prisma/
+RUN npx prisma generate
+
+# Copy remaining source code and build
 COPY . .
 RUN npm run build
 
